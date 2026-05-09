@@ -1,0 +1,330 @@
+@import "tailwindcss";
+
+/* ══════════════════════════════════════════════════════════════════
+   TAILWIND v4 THEME — replaces tailwind.config.ts entirely
+   All brand colors, fonts, animations defined here
+══════════════════════════════════════════════════════════════════ */
+@theme {
+  /* ── Brand colors ─────────────────────────────────────────────── */
+
+  /* Navy — primary brand */
+  --color-navy-50:  #E6EEF5;
+  --color-navy-100: #B3CEDE;
+  --color-navy-200: #80ADC7;
+  --color-navy-300: #4D8DB0;
+  --color-navy-400: #2A6F94;
+  --color-navy-500: #1B4F72;
+  --color-navy-600: #164260;
+  --color-navy-700: #11344D;
+  --color-navy-800: #0C273A;
+  --color-navy-900: #071927;
+
+  /* Amber — accent brand */
+  --color-amber-50:  #FEF9EC;
+  --color-amber-100: #FDEFC8;
+  --color-amber-200: #FBE4A0;
+  --color-amber-300: #F9D878;
+  --color-amber-400: #F7CE58;
+  --color-amber-500: #F39C12;
+  --color-amber-600: #D4890F;
+  --color-amber-700: #B5750C;
+  --color-amber-800: #966109;
+  --color-amber-900: #774D07;
+
+  /* Teal — secondary brand */
+  --color-teal-50:  #E1F5EE;
+  --color-teal-100: #B3E5D4;
+  --color-teal-200: #80D3B8;
+  --color-teal-300: #4DC29C;
+  --color-teal-400: #29B588;
+  --color-teal-500: #117A65;
+  --color-teal-600: #0E6756;
+  --color-teal-700: #0B5446;
+  --color-teal-800: #084136;
+  --color-teal-900: #052E26;
+
+  /* ── Typography ───────────────────────────────────────────────── */
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+
+  /* ── Border radius ────────────────────────────────────────────── */
+  --radius-sm:  0.375rem;
+  --radius-md:  0.5rem;
+  --radius-lg:  0.75rem;
+  --radius-xl:  1rem;
+  --radius-2xl: 1.25rem;
+
+  /* ── Shadows ──────────────────────────────────────────────────── */
+  --shadow-card:      0 2px 12px 0 rgba(27, 79, 114, 0.08);
+  --shadow-card-hover:0 8px 24px 0 rgba(27, 79, 114, 0.14);
+  --shadow-amber:     0 4px 14px 0 rgba(243, 156, 18, 0.35);
+
+  /* ── Animations ───────────────────────────────────────────────── */
+  --animate-fade-in:         fade-in 0.4s ease-out;
+  --animate-fade-up:         fade-up 0.5s ease-out;
+  --animate-slide-in-bottom: slide-in-bottom 0.4s ease-out;
+  --animate-slide-in-right:  slide-in-right 0.3s ease-out;
+  --animate-pulse-soft:      pulse-soft 2s ease-in-out infinite;
+  --animate-shimmer:         shimmer 2s linear infinite;
+  --animate-spin-slow:       spin-slow 3s linear infinite;
+
+  /* ── Screens ──────────────────────────────────────────────────── */
+  --breakpoint-xs: 375px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SHADCN / UI CSS VARIABLES
+   These power all shadcn components — button, card, input etc.
+══════════════════════════════════════════════════════════════════ */
+:root {
+  --background:              0 0% 100%;
+  --foreground:              210 40% 12%;
+  --card:                    0 0% 100%;
+  --card-foreground:         210 40% 12%;
+  --popover:                 0 0% 100%;
+  --popover-foreground:      210 40% 12%;
+  --primary:                 205 61% 28%;
+  --primary-foreground:      0 0% 100%;
+  --secondary:               205 40% 96%;
+  --secondary-foreground:    205 61% 28%;
+  --muted:                   210 20% 96%;
+  --muted-foreground:        210 15% 46%;
+  --accent:                  37 91% 51%;
+  --accent-foreground:       0 0% 100%;
+  --destructive:             0 84% 60%;
+  --destructive-foreground:  0 0% 100%;
+  --border:                  210 20% 90%;
+  --input:                   210 20% 90%;
+  --ring:                    205 61% 28%;
+  --radius:                  0.625rem;
+}
+
+.dark {
+  --background:              210 40% 8%;
+  --foreground:              210 20% 95%;
+  --card:                    210 40% 11%;
+  --card-foreground:         210 20% 95%;
+  --popover:                 210 40% 11%;
+  --popover-foreground:      210 20% 95%;
+  --primary:                 205 61% 55%;
+  --primary-foreground:      0 0% 100%;
+  --secondary:               210 30% 16%;
+  --secondary-foreground:    210 20% 85%;
+  --muted:                   210 30% 16%;
+  --muted-foreground:        210 15% 55%;
+  --accent:                  37 91% 51%;
+  --accent-foreground:       0 0% 100%;
+  --destructive:             0 70% 50%;
+  --destructive-foreground:  0 0% 100%;
+  --border:                  210 30% 18%;
+  --input:                   210 30% 18%;
+  --ring:                    205 61% 55%;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   KEYFRAMES
+══════════════════════════════════════════════════════════════════ */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-bottom {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes pin-ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+@keyframes accordion-down {
+  from { height: 0; }
+  to   { height: var(--radix-accordion-content-height); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to   { height: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BASE RESETS
+══════════════════════════════════════════════════════════════════ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-color: hsl(var(--border));
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  min-height: 100vh;
+}
+
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ROUTEREVEL COMPONENT CLASSES
+══════════════════════════════════════════════════════════════════ */
+
+/* Card hover lift */
+.card-hover {
+  transition: all 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Stop card */
+.stop-card {
+  background-color: hsl(var(--card));
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-card);
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.stop-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Brand gradients */
+.gradient-brand {
+  background: linear-gradient(135deg, #164260, #1B4F72, #117A65);
+}
+.gradient-amber {
+  background: linear-gradient(135deg, #F7CE58, #F39C12);
+}
+
+/* Score badges */
+.badge-must-visit {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.badge-worth-stop {
+  background-color: #fef9c3;
+  color: #a16207;
+  border: 1px solid #fef08a;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.badge-if-time {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Shimmer skeleton */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    rgba(255,255,255,0.6) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* Map pin pulse */
+.pin-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background-color: rgba(243, 156, 18, 0.3);
+  animation: pin-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Bottom sheet handle */
+.sheet-handle {
+  width: 2.5rem;
+  height: 0.25rem;
+  border-radius: 9999px;
+  background-color: rgba(100, 116, 139, 0.3);
+  margin: 0 auto 1rem;
+}
+
+/* Scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Animation utility classes */
+.animate-fade-in        { animation: fade-in 0.4s ease-out both; }
+.animate-fade-up        { animation: fade-up 0.5s ease-out both; }
+.animate-slide-in-bottom{ animation: slide-in-bottom 0.4s ease-out both; }
+.animate-slide-in-right { animation: slide-in-right 0.3s ease-out both; }
+.animate-pulse-soft     { animation: pulse-soft 2s ease-in-out infinite; }
+.animate-spin-slow      { animation: spin-slow 3s linear infinite; }
+
+/* Accordion (shadcn) */
+.animate-accordion-down { animation: accordion-down 0.2s ease-out; }
+.animate-accordion-up   { animation: accordion-up 0.2s ease-out; }
+
+/* Map container */
+.map-container {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+/* Google Maps overrides */
+.gm-style .gm-style-iw-c {
+  border-radius: 12px !important;
+  padding: 0 !important;
+}
+.gm-style .gm-style-iw-d {
+  overflow: hidden !important;
+}
