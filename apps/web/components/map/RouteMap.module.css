@@ -1,0 +1,97 @@
+/* components/map/RouteMap.module.css */
+
+.wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #0a1929;
+}
+
+/* The map canvas itself must fill its container */
+.map {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Stop preview popup — floats above map at bottom */
+.popup {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 2rem);
+  max-width: 380px;
+  background: #0f2132;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  animation: slideUp 0.22s ease-out both;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.popupClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.popupClose:hover { background: rgba(255,255,255,0.14); }
+
+.popupName {
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 24px 10px 0;
+  line-height: 1.3;
+}
+
+.popupStats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.popupStat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.82rem;
+}
+
+.popupBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 3px 14px rgba(243, 156, 18, 0.35);
+  transition: opacity 0.15s;
+}
+.popupBtn:hover { opacity: 0.9; }

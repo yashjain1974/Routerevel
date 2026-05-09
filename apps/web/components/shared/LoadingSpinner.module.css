@@ -1,0 +1,63 @@
+/* components/shared/LoadingSpinner.module.css */
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1.5rem;
+}
+
+/* Outer ring that spins */
+.ring {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+/* Center amber dot */
+.dot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dotInner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  box-shadow: 0 0 14px rgba(243, 156, 18, 0.55);
+}
+
+/* Text area */
+.textArea { text-align: center; }
+
+.message {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.subtext {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.78rem;
+  margin: 6px 0 0;
+}
+
+/* Bouncing dots row */
+.dots {
+  display: flex;
+  gap: 6px;
+}
+
+.dotBounce {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f39c12;
+}
