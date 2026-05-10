@@ -1,0 +1,98 @@
+// server/prisma/schema.prisma
+// Database schema for RouteRevel.
+// Run: npx prisma db push  (creates tables)
+// Run: npx prisma generate (generates client)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── User ──────────────────────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String?  // null if using OAuth
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  trips     Trip[]
+  prefs     UserPreference?
+
+  @@map("users")
+}
+
+// ── User preferences ──────────────────────────────────────────────
+model UserPreference {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories   String[] @default(["temple", "nature", "monument", "viewpoint"])
+  maxDetourKm  Int      @default(20)
+  minRating    Float    @default(3.5)
+  updatedAt    DateTime @updatedAt
+
+  @@map("user_preferences")
+}
+
+// ── Trip ──────────────────────────────────────────────────────────
+// Saved route plan — created when user plans a route
+model Trip {
+  id              String     @id @default(cuid())
+  userId          String?    // null for anonymous trips
+  user            User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  from            String     // "Hyderabad"
+  to              String     // "Bangalore"
+  fromAddress     String?    // full address from Directions API
+  toAddress       String?
+  distanceKm      Int
+  durationMinutes Int
+  polyline        String     // encoded route polyline
+  status          TripStatus @default(PLANNED)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Relations
+  stops           TripStop[]
+
+  @@map("trips")
+}
+
+enum TripStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// ── TripStop ──────────────────────────────────────────────────────
+// Individual stop within a trip — stores AI ranking data
+model TripStop {
+  id                   String   @id @default(cuid())
+  tripId               String
+  trip                 Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  placeId              String   // Google Place ID
+  name                 String
+  lat                  Float
+  lng                  Float
+  rating               Float
+  totalRatings         Int
+  category             String
+  openNow              Boolean
+  aiScore              Int      // 0-100
+  aiSummary            String
+  detourKm             Float    @default(0)
+  detourMinutes        Int      @default(0)
+  visitDurationMinutes Int      @default(60)
+  visited              Boolean  @default(false)
+  visitedAt            DateTime?
+  rank                 Int      // position in the ranked list
+
+  @@map("trip_stops")
+}
