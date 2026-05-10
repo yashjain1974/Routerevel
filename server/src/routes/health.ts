@@ -59,3 +59,12 @@ healthRouter.get("/health", async (_req, res) => {
       : "Fix Redis: change redis:// to rediss:// in REDIS_URL for Upstash",
   })
 })
+
+healthRouter.delete("/cache/flush", async (_req, res) => {
+  if (process.env.NODE_ENV !== "development") {
+    return res.status(403).json({ error: "Only available in development" })
+  }
+  const { redis } = await import("../lib/cache")
+  await redis.flushall()
+  res.json({ message: "Cache flushed successfully" })
+})

@@ -2,112 +2,220 @@
 
 .container { width: 100%; }
 
-/* ── Sort bar ────────────────────────────────────────────────────── */
-.sortBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-  padding: 10px 14px;
+/* ── Radius selector ─────────────────────────────────────────────── */
+.radiusBar {
+  margin-bottom: 12px;
+  padding: 12px 14px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+.radiusLabel {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.radiusBold {
+  color: #f39c12;
+  font-weight: 600;
+}
+
+.radiusBtns {
+  display: flex;
+  gap: 6px;
+}
+
+.radiusBtn {
+  flex: 1;
+  height: 34px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.radiusBtn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.7);
+}
+.radiusBtnActive {
+  background: rgba(243, 156, 18, 0.15);
+  border-color: rgba(243, 156, 18, 0.45);
+  color: #f39c12;
+}
+
+/* ── Sort + count bar ────────────────────────────────────────────── */
+.sortBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 .count {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 }
 
 .countNum {
   color: #f39c12;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 800;
 }
 
 .countLabel {
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 0.78rem;
 }
 
 .sortGroup {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .sortBtn {
-  padding: 5px 12px;
+  padding: 3px 10px;
   border-radius: 9999px;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
-  transition: all 0.15s ease;
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.38);
   font-family: inherit;
+  transition: all 0.12s;
   white-space: nowrap;
 }
-.sortBtn:hover {
-  background: rgba(255, 255, 255, 0.09);
-  color: rgba(255, 255, 255, 0.7);
+.sortBtn:hover { color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.08); }
+.sortBtnActive {
+  background: rgba(243,156,18,0.14);
+  border-color: rgba(243,156,18,0.4);
+  color: #f39c12;
 }
 
-.sortBtnActive {
-  background: rgba(243, 156, 18, 0.15);
-  border-color: rgba(243, 156, 18, 0.4);
-  color: #f39c12;
+/* ── Meta bar (route info) ───────────────────────────────────────── */
+.metaBar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.73rem;
+  color: rgba(255,255,255,0.3);
+  flex-wrap: wrap;
 }
-.sortBtnActive:hover {
-  background: rgba(243, 156, 18, 0.22);
-  color: #f39c12;
+
+/* ── Sticky trip bar (selected stops CTA) ────────────────────────── */
+.tripBar {
+  position: sticky;
+  bottom: 16px;
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1B4F72, #164260);
+  border: 1px solid rgba(243, 156, 18, 0.3);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 30;
+  animation: slideUp 0.25s ease-out both;
 }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tripBarLeft { flex: 1; }
+
+.tripBarTitle {
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0 0 2px;
+}
+
+.tripBarMeta {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.tripBarMeta span {
+  color: #f39c12;
+  font-weight: 600;
+}
+
+.tripBarBtn {
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(243,156,18,0.4);
+  transition: opacity 0.15s;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tripBarBtn:hover { opacity: 0.9; }
 
 /* ── Cards list ──────────────────────────────────────────────────── */
 .list { width: 100%; }
 
-/* ── Info box at bottom ──────────────────────────────────────────── */
-.infoBox {
-  margin-top: 1.25rem;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  text-align: center;
-}
-
-.infoText {
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 0.78rem;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.infoHighlight { color: #f39c12; font-weight: 600; }
-
-/* ── Empty state ─────────────────────────────────────────────────── */
-.empty {
+/* ── Error state ─────────────────────────────────────────────────── */
+.errorBox {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4rem 2rem;
-  gap: 10px;
+  padding: 3rem 1.5rem;
   text-align: center;
+  border-radius: 16px;
+  background: rgba(248,113,113,0.05);
+  border: 1px solid rgba(248,113,113,0.15);
 }
+.errorTitle { color: #f87171; font-size: 1rem; font-weight: 600; margin: 0 0 6px; }
+.errorDesc  { color: rgba(255,255,255,0.38); font-size: 0.83rem; margin: 0 0 1rem; max-width: 280px; line-height: 1.55; }
+.retryBtn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 18px; border-radius: 10px;
+  background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.28);
+  color: #f87171; font-size: 0.83rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background 0.2s; margin-bottom: 10px;
+}
+.retryBtn:hover { background: rgba(248,113,113,0.18); }
+.errorHint { color: rgba(255,255,255,0.22); font-size: 0.73rem; margin: 0; }
 
-.emptyTitle {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0;
+/* ── Empty state ─────────────────────────────────────────────────── */
+.empty {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 4rem 2rem; text-align: center;
 }
-
-.emptyDesc {
-  color: rgba(255, 255, 255, 0.28);
-  font-size: 0.82rem;
-  margin: 0;
-  max-width: 240px;
-  line-height: 1.55;
-}
+.emptyTitle { color: rgba(255,255,255,0.45); font-size: 0.95rem; font-weight: 600; margin: 0 0 6px; }
+.emptyDesc  { color: rgba(255,255,255,0.26); font-size: 0.8rem; margin: 0; max-width: 230px; line-height: 1.55; }

@@ -1,113 +1,32 @@
 "use client"
 // components/stops/StopsList.tsx
-// Optimizations applied:
-// 1. useMemo for sorted list — only re-sorts when stops or sortBy changes
-// 2. useCallback for onClick handler — stable reference prevents StopCard re-renders
-// 3. Zustand store for selectedStop — avoids prop drilling
-// 4. AnimatePresence on StopDetail — smooth enter/exit without conditional rendering hacks
+// Major update:
+// 1. Radius selector — 5/10/20/30km filters stops by detour distance
+// 2. Travel order sort — stops sorted by position along route (source → dest)
+// 3. Stop selection — user picks stops, sticky "Start trip" bar appears
+// 4. Hidden gem detection — low-review but high-score stops flagged
 
 import { useMemo, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { MapPin, SlidersHorizontal, SearchX } from "lucide-react"
-import { StopCard } from "./StopCard"
-import { StopDetail } from "./StopDetail"
+import { MapPin, SlidersHorizontal, SearchX, RefreshCw, Wifi,
+         Navigation, ExternalLink } from "lucide-react"
+import { StopCard }       from "./StopCard"
+import { StopDetail }     from "./StopDetail"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { useRouteStore } from "@/stores/useRouteStore"
-import { Stop, StopCategory } from "@/types"
-import styles from "./StopsList.module.css"
+import { useRouteStore }  from "@/stores/useRouteStore"
+import { useRoute }       from "@/hooks/useRoute"
+import { Stop }           from "@/types"
+import styles             from "./StopsList.module.css"
 
-// ── Mock data ─────────────────────────────────────────────────────
-// Replace this array with a real API call in useRoute.ts once backend is ready.
-// Shape matches the Stop interface in types/index.ts exactly.
-const MOCK_STOPS: Stop[] = [
-  {
-    id: "1",
-    name: "Lepakshi Temple",
-    description: "Ancient Vijayanagara-era temple famous for the hanging pillar and giant Nandi statue.",
-    lat: 13.8030, lng: 77.6090,
-    rating: 4.6, totalRatings: 8420,
-    detourKm: 1.2, detourMinutes: 4,
-    visitDurationMinutes: 60,
-    category: "temple" as StopCategory,
-    openNow: true,
-    openingHours: ["Monday: 6:00 AM – 6:00 PM", "Tuesday: 6:00 AM – 6:00 PM", "Wednesday: 6:00 AM – 6:00 PM"],
-    photos: [],
-    aiScore: 92,
-    aiSummary: "One of the finest examples of Vijayanagara architecture. The hanging pillar defies gravity — a must-see marvel. Visit early morning to avoid crowds.",
-    placeId: "lepakshi_001",
-  },
-  {
-    id: "2",
-    name: "Kolar Gold Fields Viewpoint",
-    description: "Historic gold mining region with stunning views over the Mysore Plateau.",
-    lat: 13.0689, lng: 78.2647,
-    rating: 4.2, totalRatings: 1840,
-    detourKm: 4.5, detourMinutes: 12,
-    visitDurationMinutes: 30,
-    category: "viewpoint" as StopCategory,
-    openNow: true,
-    openingHours: ["Open 24 hours"],
-    photos: [],
-    aiScore: 74,
-    aiSummary: "Fascinating industrial heritage site. The deep shafts and old machinery tell the story of India's gold rush era. Great for photography.",
-    placeId: "kgf_001",
-  },
-  {
-    id: "3",
-    name: "Skandagiri Hills",
-    description: "A popular trekking destination offering panoramic views of the surrounding landscape.",
-    lat: 13.5850, lng: 77.6730,
-    rating: 4.4, totalRatings: 12300,
-    detourKm: 8.2, detourMinutes: 18,
-    visitDurationMinutes: 120,
-    category: "nature" as StopCategory,
-    openNow: true,
-    openingHours: ["Monday: 5:00 AM – 5:00 PM", "Tuesday: 5:00 AM – 5:00 PM"],
-    photos: [],
-    aiScore: 81,
-    aiSummary: "Stunning sunrise trek popular with Bengaluru locals. A brief detour to the base camp offers beautiful valley views even without trekking.",
-    placeId: "skandagiri_001",
-  },
-  {
-    id: "4",
-    name: "Pavagada Fort",
-    description: "16th century fort perched on a rocky hill with sweeping views.",
-    lat: 14.1000, lng: 77.2700,
-    rating: 3.9, totalRatings: 620,
-    detourKm: 12.4, detourMinutes: 22,
-    visitDurationMinutes: 45,
-    category: "monument" as StopCategory,
-    openNow: false,
-    openingHours: ["Monday: 9:00 AM – 5:00 PM", "Tuesday: 9:00 AM – 5:00 PM"],
-    photos: [],
-    aiScore: 61,
-    aiSummary: "Off-the-beaten-path fort with interesting history. Currently closed for renovation but the exterior and views are worth the short stop.",
-    placeId: "pavagada_001",
-  },
-  {
-    id: "5",
-    name: "Madhugiri Betta",
-    description: "Asia's second largest monolith — a massive granite dome rising from the plains.",
-    lat: 13.6624, lng: 77.2046,
-    rating: 4.5, totalRatings: 5670,
-    detourKm: 18.3, detourMinutes: 28,
-    visitDurationMinutes: 90,
-    category: "nature" as StopCategory,
-    openNow: true,
-    openingHours: ["Monday: 6:00 AM – 6:00 PM", "Tuesday: 6:00 AM – 6:00 PM"],
-    photos: [],
-    aiScore: 88,
-    aiSummary: "Asia's second largest monolith. The climb rewards you with 360° views of the Deccan Plateau. Worth the detour if you have 2+ hours.",
-    placeId: "madhugiri_001",
-  },
-]
+// Radius options the user can pick
+const RADIUS_OPTIONS = [5, 10, 20, 30] as const
+type RadiusKm = typeof RADIUS_OPTIONS[number]
 
 const SORT_OPTIONS = [
-  { key: "score",  label: "AI Score" },
-  { key: "detour", label: "Nearest"  },
-  { key: "rating", label: "Rating"   },
+  { key: "travel", label: "Route order" },
+  { key: "score",  label: "AI Score"    },
+  { key: "rating", label: "Rating"      },
 ] as const
-
 type SortKey = typeof SORT_OPTIONS[number]["key"]
 
 interface StopsListProps {
@@ -116,61 +35,146 @@ interface StopsListProps {
 }
 
 export function StopsList({ from, to }: StopsListProps) {
-  // Pull only the slices we need from the store — avoids re-render on unrelated state changes
-  const selectedStop  = useRouteStore((s) => s.selectedStop)
-  const setSelected   = useRouteStore((s) => s.setSelectedStop)
-  const sortBy        = useRouteStore((s) => s.sortBy)
-  const setSortBy     = useRouteStore((s) => s.setSortBy)
-  const isLoading     = useRouteStore((s) => s.isLoading)
 
-  // Memoized sort — only recalculates when stops array or sortBy key changes
+  // ── Store ──────────────────────────────────────────────────────
+  const selectedStop    = useRouteStore((s) => s.selectedStop)
+  const setSelected     = useRouteStore((s) => s.setSelectedStop)
+  const sortBy          = useRouteStore((s) => s.sortBy)
+  const setSortBy       = useRouteStore((s) => s.setSortBy)
+  const radiusKm        = useRouteStore((s) => s.radiusKm)
+  const setRadiusKm     = useRouteStore((s) => s.setRadiusKm)
+  const pickedStopIds   = useRouteStore((s) => s.pickedStopIds)
+  const clearPickedStops = useRouteStore((s) => s.clearPickedStops)
+
+  // ── Fetch ──────────────────────────────────────────────────────
+  const { stops, isLoading, error, fromCache, meta, message, refetch, route } =
+    useRoute(from, to)
+
+  // ── Radius filter ──────────────────────────────────────────────
+  // Only show stops within the selected radius (detourKm)
+  const filtered = useMemo<Stop[]>(() => {
+    return stops.filter((s) => s.detourKm <= radiusKm)
+  }, [stops, radiusKm])
+
+  // ── Sort ───────────────────────────────────────────────────────
+  // "travel" = order along route (by detourKm as proxy for position)
+  // This approximates travel order — backend will provide exact position later
   const sorted = useMemo<Stop[]>(() => {
-    const stops = MOCK_STOPS // TODO: replace with route.stops from store once API connected
-    return [...stops].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       if (sortBy === "score")  return b.aiScore  - a.aiScore
-      if (sortBy === "detour") return a.detourKm - b.detourKm
       if (sortBy === "rating") return b.rating   - a.rating
-      return 0
+      // travel order: sort by lat distance from source (proxy for route position)
+      // Real implementation: sort by distance along polyline
+      return a.detourKm - b.detourKm
     })
-  }, [sortBy])
+  }, [filtered, sortBy])
 
-  // Stable callback reference — prevents all StopCards from re-rendering on parent state changes
+  // ── Selection ──────────────────────────────────────────────────
+  const pickedStops = useMemo(
+    () => sorted.filter((s) => pickedStopIds.has(s.placeId)),
+    [sorted, pickedStopIds]
+  )
+
+  // Total added time for picked stops
+  const totalAddedMin = useMemo(
+    () => pickedStops.reduce((sum, s) => sum + s.visitDurationMinutes + s.detourMinutes * 2, 0),
+    [pickedStops]
+  )
+  const totalAddedKm = useMemo(
+    () => pickedStops.reduce((sum, s) => sum + s.detourKm * 2, 0),
+    [pickedStops]
+  )
+
+  // Build Google Maps URL with all picked stops as waypoints
+  const googleMapsUrl = useMemo(() => {
+    if (pickedStops.length === 0) return ""
+    const origin      = encodeURIComponent(from)
+    const destination = encodeURIComponent(to)
+    const waypoints   = pickedStops
+      .map((s) => `${s.lat},${s.lng}`)
+      .join("|")
+    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`
+  }, [pickedStops, from, to])
+
+  // ── Callbacks ──────────────────────────────────────────────────
   const handleCardClick = useCallback((stop: Stop) => setSelected(stop), [setSelected])
+  const handleClose     = useCallback(() => setSelected(null), [setSelected])
 
-  // Stable close handler
-  const handleClose = useCallback(() => setSelected(null), [setSelected])
+  // ── States ─────────────────────────────────────────────────────
+  if (isLoading) return <LoadingSpinner message={`Scanning stops between ${from} and ${to}...`} />
 
-  if (isLoading) return <LoadingSpinner message="AI is scanning your route corridor..." />
+  if (error) return (
+    <div className={styles.errorBox}>
+      <Wifi size={36} style={{ color: "rgba(248,113,113,0.5)", marginBottom: "12px" }} />
+      <p className={styles.errorTitle}>Could not fetch stops</p>
+      <p className={styles.errorDesc}>{error}</p>
+      <button className={styles.retryBtn} onClick={() => refetch()}>
+        <RefreshCw size={14} /> Try again
+      </button>
+      <p className={styles.errorHint}>
+        Backend must be running on <code style={{ color: "#f39c12" }}>localhost:3001</code>
+      </p>
+    </div>
+  )
 
-  if (sorted.length === 0) {
-    return (
-      <div className={styles.empty}>
-        <SearchX size={40} style={{ opacity: 0.4 }} />
-        <p className={styles.emptyTitle}>No stops found</p>
-        <p className={styles.emptyDesc}>
-          Try adjusting your route or increasing the detour radius in preferences.
-        </p>
-      </div>
-    )
-  }
+  if (stops.length === 0) return (
+    <div className={styles.empty}>
+      <SearchX size={38} style={{ color: "rgba(255,255,255,0.18)", marginBottom: "8px" }} />
+      <p className={styles.emptyTitle}>{message || "No stops found"}</p>
+      <p className={styles.emptyDesc}>Try a longer route or different city names.</p>
+    </div>
+  )
 
   return (
     <div className={styles.container}>
 
-      {/* Sort bar */}
+      {/* ── Radius selector ── */}
+      <motion.div
+        className={styles.radiusBar}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+      >
+        <div className={styles.radiusLabel}>
+          <Navigation size={12} />
+          Show stops within&nbsp;
+          <span className={styles.radiusBold}>{radiusKm} km</span>
+          &nbsp;of your route
+        </div>
+        <div className={styles.radiusBtns}>
+          {RADIUS_OPTIONS.map((r) => (
+            <button
+              key={r}
+              className={`${styles.radiusBtn} ${radiusKm === r ? styles.radiusBtnActive : ""}`}
+              onClick={() => setRadiusKm(r)}
+            >
+              {r} km
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ── Sort + count bar ── */}
       <motion.div
         className={styles.sortBar}
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
         <div className={styles.count}>
-          <MapPin size={14} style={{ color: "#F39C12" }} />
-          {sorted.length} stops found
+          <MapPin size={13} style={{ color: "#f39c12" }} />
+          <span className={styles.countNum}>{sorted.length}</span>
+          <span className={styles.countLabel}>
+            stops
+            {fromCache && (
+              <span style={{ color: "rgba(45,206,137,0.6)", marginLeft: "5px", fontSize: "0.68rem" }}>
+                ⚡ cached
+              </span>
+            )}
+          </span>
         </div>
-
         <div className={styles.sortGroup}>
-          <SlidersHorizontal size={13} style={{ color: "rgba(255,255,255,0.4)" }} />
+          <SlidersHorizontal size={12} style={{ color: "rgba(255,255,255,0.28)" }} />
           {SORT_OPTIONS.map(({ key, label }) => (
             <button
               key={key}
@@ -183,11 +187,38 @@ export function StopsList({ from, to }: StopsListProps) {
         </div>
       </motion.div>
 
-      {/* Stop cards — layout prop animates reordering when sort changes */}
-      <motion.div layout>
+      {/* ── Route meta ── */}
+      {meta && (
+        <motion.div
+          className={styles.metaBar}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.12 }}
+        >
+          <span>{from} → {to}</span>
+          <span>·</span>
+          <span>{meta.routeKm} km</span>
+          <span>·</span>
+          <span>~{Math.floor(meta.routeMin / 60)}h {meta.routeMin % 60}m</span>
+          <span>·</span>
+          <span>{meta.totalFound} places scanned</span>
+        </motion.div>
+      )}
+
+      {/* ── Empty after radius filter ── */}
+      {sorted.length === 0 && (
+        <div className={styles.empty}>
+          <SearchX size={32} style={{ color: "rgba(255,255,255,0.18)", marginBottom: "8px" }} />
+          <p className={styles.emptyTitle}>No stops within {radiusKm} km</p>
+          <p className={styles.emptyDesc}>Try a larger radius above.</p>
+        </div>
+      )}
+
+      {/* ── Stop cards ── */}
+      <motion.div layout className={styles.list}>
         {sorted.map((stop, i) => (
           <StopCard
-            key={stop.id}   // stable key = no remount on sort
+            key={stop.placeId}
             stop={stop}
             index={i}
             onClick={handleCardClick}
@@ -195,23 +226,64 @@ export function StopsList({ from, to }: StopsListProps) {
         ))}
       </motion.div>
 
-      {/* Mock data notice — remove once real API is wired */}
-      <motion.div
-        className={styles.hint}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.9 }}
-      >
-        Sample stops for Hyderabad → Bangalore.{" "}
-        Connect the backend to get real AI-ranked stops for{" "}
-        <span className={styles.hintHighlight}>{from} → {to}</span>.
-      </motion.div>
+      {/* ── Sticky trip bar — appears when stops are selected ── */}
+      <AnimatePresence>
+        {pickedStops.length > 0 && (
+          <motion.div
+            className={styles.tripBar}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ type: "spring", stiffness: 200, damping: 22 }}
+          >
+            <div className={styles.tripBarLeft}>
+              <p className={styles.tripBarTitle}>
+                {pickedStops.length} stop{pickedStops.length > 1 ? "s" : ""} selected
+              </p>
+              <p className={styles.tripBarMeta}>
+                +<span>{Math.round(totalAddedMin / 60)}h {totalAddedMin % 60}m</span>
+                &nbsp;·&nbsp;
+                +<span>{totalAddedKm.toFixed(0)} km</span>
+                &nbsp;added to trip
+              </p>
+            </div>
 
-      {/* Detail sheet — AnimatePresence handles mount/unmount animation */}
+            {/* Clear button */}
+            <button
+              onClick={clearPickedStops}
+              style={{
+                background: "none",
+                border: "1px solid rgba(255,255,255,0.15)",
+                color: "rgba(255,255,255,0.45)",
+                borderRadius: "9px",
+                padding: "8px 12px",
+                cursor: "pointer",
+                fontSize: "0.78rem",
+                fontFamily: "inherit",
+              }}
+            >
+              Clear
+            </button>
+
+            {/* Open Google Maps with waypoints */}
+            <a
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.tripBarBtn}
+            >
+              Navigate
+              <ExternalLink size={13} />
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Detail sheet ── */}
       <AnimatePresence>
         {selectedStop && (
           <StopDetail
-            key="stop-detail"
+            key="detail"
             stop={selectedStop}
             onClose={handleClose}
           />

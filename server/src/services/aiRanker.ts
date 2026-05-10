@@ -1,24 +1,21 @@
 // server/src/services/aiRanker.ts
-// AI ranking service using FREE APIs:
-// PRIMARY:  Google Gemini (1,500 req/day free — https://aistudio.google.com)
-// FALLBACK: Groq with Llama 3.3 70B (30 req/min free — https://console.groq.com)
-//
-// Both are completely free with no credit card required.
-// Gemini is tried first. If it fails (rate limit/error), Groq is used automatically.
+// Updated AI prompt:
+// - Explicitly filters out non-tourist places
+// - Ranks by Google reviews + cultural significance
+// - Rejects personal/private/commercial places
+// - Focus on places any tourist would want to visit
 
-import { GoogleGenerativeAI } from "@google/generative-ai"
-import Groq                   from "groq-sdk"
-import { RawStop }            from "./corridor"
+import { GoogleGenAI } from "@google/genai"
+import Groq            from "groq-sdk"
+import { RawStop }     from "./corridor"
 
-// ── Client initialization ─────────────────────────────────────────
-// Initialized lazily — only created when first needed
-let geminiClient: GoogleGenerativeAI | null = null
+let geminiClient: GoogleGenAI | null = null
 let groqClient:   Groq | null = null
 
-function getGemini(): GoogleGenerativeAI {
+function getGemini(): GoogleGenAI {
   if (!geminiClient) {
     if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set")
-    geminiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+    geminiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   }
   return geminiClient
 }
@@ -31,7 +28,6 @@ function getGroq(): Groq {
   return groqClient
 }
 
-// ── Types ─────────────────────────────────────────────────────────
 export type StopCategory =
   | "temple" | "nature" | "monument" | "food"
   | "viewpoint" | "museum" | "dam" | "other"
@@ -53,214 +49,228 @@ export interface RankedStop {
   detourMinutes:        number
   visitDurationMinutes: number
   description:          string
+  isHiddenGem:          boolean
 }
 
-interface RankingContext {
-  from: string
-  to:   string
-}
+interface RankingContext { from: string; to: string }
 
-// ── Prompt builder ────────────────────────────────────────────────
+// ── Build strict tourist-focused prompt ───────────────────────────
 function buildPrompt(stops: RawStop[], ctx: RankingContext): string {
-  const list = stops
-    .map((s, i) => `
+  const list = stops.map((s, i) => `
 ${i + 1}. placeId: ${s.placeId}
    Name: ${s.name}
-   Rating: ${s.rating} (${s.totalRatings} reviews)
-   Types: ${s.types.slice(0, 4).join(", ")}
+   Google Rating: ${s.rating}/5 (${s.totalRatings} reviews)
+   Types: ${s.types.slice(0, 5).join(", ")}
    Open now: ${s.openNow}
-   Description: ${s.editorialSummary || "N/A"}
-   Area: ${s.vicinity}`.trim())
-    .join("\n\n")
+   Description: ${s.editorialSummary || "No description"}
+   Location: ${s.vicinity}`.trim()).join("\n\n")
 
-  return `You are an expert Indian travel guide.
+  return `You are a strict Indian tourism expert filtering and ranking tourist destinations.
+
 A traveller is driving from ${ctx.from} to ${ctx.to}.
-These places were found along their route. Rank and score them.
 
-Return ONLY a valid JSON array — no markdown, no explanation.
-Each object must have exactly these fields:
+YOUR JOB — two tasks:
+
+TASK 1 — FILTER (very important):
+REJECT any place that is:
+- A private residence, apartment, or gated community
+- A commercial business (shop, mall, hotel, restaurant, petrol station)
+- A school, college, hospital, government office
+- A generic area name (like a city, district, or neighbourhood)
+- A place with fewer than 100 genuine tourist reviews
+- Anything that is NOT a publicly accessible tourist destination
+
+ONLY KEEP places that are:
+✅ Publicly accessible temples, mosques, churches, gurudwaras
+✅ Historical monuments, forts, palaces, ruins
+✅ Natural attractions (waterfalls, hills, lakes, forests, viewpoints)
+✅ Museums, art galleries, heritage sites
+✅ Famous gardens, parks, zoos, sanctuaries
+✅ Archaeological sites
+
+TASK 2 — RANK AND SCORE:
+For each KEPT place, return a JSON object with:
 {
   "placeId": "exact placeId from input",
-  "score": 0-100 integer,
-  "category": "temple|nature|monument|food|viewpoint|museum|dam|other",
-  "summary": "1-2 sentences. Mention ONE unique feature. Be specific.",
-  "visitDurationMinutes": 30|45|60|90|120,
-  "detourKm": number,
-  "detourMinutes": number
+  "include": true,
+  "score": 0-100,
+  "category": "temple|nature|monument|viewpoint|museum|dam|other",
+  "summary": "2 sentences max. ONE specific unique feature. Why a tourist should stop here.",
+  "visitDurationMinutes": 30|45|60|90|120|180,
+  "detourKm": estimated km off the highway,
+  "detourMinutes": estimated detour driving minutes,
+  "isHiddenGem": true if under 500 reviews but genuinely unique
 }
 
-Scoring:
-85-100 = Must visit (unique, culturally significant, highly rated)
-70-84  = Worth a stop
-55-69  = Nice if passing by
-<55    = Skip
+For REJECTED places, still include them but with "include": false and score: 0.
 
-PLACES:
+SCORING GUIDE (weight Google reviews heavily):
+- 90-100: Iconic, must-visit. Famous nationally. 4.5+ stars, 1000+ reviews.
+- 75-89:  Excellent tourist spot. 4.0+ stars, 500+ reviews. Worth a detour.
+- 60-74:  Good spot. 3.8+ stars, 100+ reviews. Nice if on the way.
+- Below 60: Skip.
+
+Return ONLY a valid JSON array. No markdown. No explanation.
+
+PLACES TO EVALUATE:
 ${list}`
 }
 
-// ── Parse AI response safely ──────────────────────────────────────
+// ── Parse response ────────────────────────────────────────────────
 function parseAIResponse(text: string): any[] {
-  // Remove markdown code blocks if present
-  const clean = text
-    .replace(/```json\n?/gi, "")
-    .replace(/```\n?/gi, "")
-    .trim()
-
-  // Try direct parse first
+  const clean = text.replace(/```json\n?/gi, "").replace(/```\n?/gi, "").trim()
   try {
     return JSON.parse(clean)
   } catch {
-    // Try extracting JSON array from response
     const match = clean.match(/\[[\s\S]*\]/)
     if (match) return JSON.parse(match[0])
-    throw new Error("Could not parse AI response as JSON")
+    throw new Error("Cannot parse AI response")
   }
 }
 
-// ── Merge AI scores with original stop data ───────────────────────
-function mergeResults(
-  aiResults: any[],
-  originalStops: RawStop[]
-): RankedStop[] {
+// ── Merge AI results with original data ───────────────────────────
+function mergeResults(aiResults: any[], originals: RawStop[]): RankedStop[] {
   return aiResults
+    .filter((r) => r.include !== false && r.score > 40) // filter rejected places
     .map((r: any) => {
-      const original = originalStops.find((s) => s.placeId === r.placeId)
-      if (!original) return null
-
+      const orig = originals.find((s) => s.placeId === r.placeId)
+      if (!orig) return null
       return {
-        placeId:              original.placeId,
-        name:                 original.name,
-        lat:                  original.lat,
-        lng:                  original.lng,
-        rating:               original.rating,
-        totalRatings:         original.totalRatings,
+        placeId:              orig.placeId,
+        name:                 orig.name,
+        lat:                  orig.lat,
+        lng:                  orig.lng,
+        rating:               orig.rating,
+        totalRatings:         orig.totalRatings,
         category:             (r.category || "other") as StopCategory,
-        openNow:              original.openNow,
-        openingHours:         original.openingHours,
-        photos:               original.photos,
+        openNow:              orig.openNow,
+        openingHours:         orig.openingHours,
+        photos:               orig.photos,
         aiScore:              Math.min(100, Math.max(0, parseInt(r.score) || 50)),
-        aiSummary:            r.summary || original.editorialSummary || "",
+        aiSummary:            r.summary || orig.editorialSummary || "",
         detourKm:             parseFloat(r.detourKm)             || 0,
         detourMinutes:        parseInt(r.detourMinutes)           || 0,
         visitDurationMinutes: parseInt(r.visitDurationMinutes)    || 60,
-        description:          original.editorialSummary           || "",
+        description:          orig.editorialSummary               || "",
+        isHiddenGem:          r.isHiddenGem === true && orig.totalRatings < 500,
       } as RankedStop
     })
     .filter(Boolean) as RankedStop[]
 }
 
-// ── Fallback: sort by Google rating if AI fails ───────────────────
+// ── Rating-based fallback ─────────────────────────────────────────
 function ratingFallback(stops: RawStop[]): RankedStop[] {
-  console.warn("[AI RANKER] Using rating fallback — both AI providers failed")
-  return stops.map((s) => ({
-    placeId:              s.placeId,
-    name:                 s.name,
-    lat:                  s.lat,
-    lng:                  s.lng,
-    rating:               s.rating,
-    totalRatings:         s.totalRatings,
-    category:             "other" as StopCategory,
-    openNow:              s.openNow,
-    openingHours:         s.openingHours,
-    photos:               s.photos,
-    aiScore:              Math.round(s.rating * 20), // 4.5 → 90
-    aiSummary:            s.editorialSummary || `${s.name} — rated ${s.rating}★`,
-    detourKm:             0,
-    detourMinutes:        0,
-    visitDurationMinutes: 60,
-    description:          s.editorialSummary || "",
-  })).sort((a, b) => b.aiScore - a.aiScore)
+  console.warn("[AI] Both providers failed — using Google rating fallback")
+  return stops
+    .filter((s) => s.totalRatings >= 100 && s.rating >= 3.8)
+    .map((s) => ({
+      placeId:              s.placeId,
+      name:                 s.name,
+      lat:                  s.lat,
+      lng:                  s.lng,
+      rating:               s.rating,
+      totalRatings:         s.totalRatings,
+      category:             "other" as StopCategory,
+      openNow:              s.openNow,
+      openingHours:         s.openingHours,
+      photos:               s.photos,
+      aiScore:              Math.round(Math.min(100,
+        s.rating * 15 + Math.log10(s.totalRatings + 1) * 10
+      )),
+      aiSummary:            s.editorialSummary || `${s.name} — rated ${s.rating}★ by ${s.totalRatings} visitors`,
+      detourKm:             0,
+      detourMinutes:        0,
+      visitDurationMinutes: 60,
+      description:          s.editorialSummary || "",
+      isHiddenGem:          s.totalRatings < 300 && s.rating >= 4.2,
+    }))
+    .sort((a, b) => b.aiScore - a.aiScore)
 }
 
-// ── PRIMARY: Google Gemini ────────────────────────────────────────
-async function rankWithGemini(
-  stops: RawStop[],
-  ctx:   RankingContext
-): Promise<RankedStop[]> {
-  const gemini = getGemini()
-  const model  = gemini.getGenerativeModel({
-    model:          "gemini-2.0-flash",   // free tier model
-    generationConfig: {
-      temperature:      0.2,              // low temp for consistent JSON
+// ── Gemini ranker ─────────────────────────────────────────────────
+async function rankWithGemini(stops: RawStop[], ctx: RankingContext): Promise<RankedStop[]> {
+  const ai       = getGemini()
+  const response = await ai.models.generateContent({
+    model:    "gemini-2.5-flash",
+    contents: buildPrompt(stops, ctx),
+    config: {
+      temperature:      0.1,    // very low — we want strict, consistent filtering
       responseMimeType: "application/json",
     },
   })
 
-  const result   = await model.generateContent(buildPrompt(stops, ctx))
-  const text     = result.response.text()
-  const parsed   = parseAIResponse(text)
-  const ranked   = mergeResults(parsed, stops)
+  const text   = response.text ?? ""
+  if (!text) throw new Error("Gemini returned empty response")
 
-  console.log(`✅ [GEMINI] Scored ${ranked.length} stops`)
+  const parsed = parseAIResponse(text)
+  const ranked = mergeResults(parsed, stops)
+  console.log(`✅ [GEMINI] ${ranked.length} tourist stops after filtering`)
   return ranked.sort((a, b) => b.aiScore - a.aiScore)
 }
 
-// ── FALLBACK: Groq (Llama 3.3 70B) ───────────────────────────────
-async function rankWithGroq(
-  stops: RawStop[],
-  ctx:   RankingContext
-): Promise<RankedStop[]> {
-  const groq = getGroq()
-
+// ── Groq fallback ─────────────────────────────────────────────────
+async function rankWithGroq(stops: RawStop[], ctx: RankingContext): Promise<RankedStop[]> {
+  const groq       = getGroq()
   const completion = await groq.chat.completions.create({
-    model:       "llama-3.3-70b-versatile",  // free model on Groq
-    temperature: 0.2,
-    messages: [{
-      role:    "user",
-      content: buildPrompt(stops, ctx),
-    }],
+    model:       "llama-3.3-70b-versatile",
+    temperature: 0.1,
+    messages:    [{ role: "user", content: buildPrompt(stops, ctx) }],
     response_format: { type: "json_object" },
   })
 
-  const text   = completion.choices[0]?.message?.content || "[]"
-  // Groq with json_object wraps in object — extract array
+  const text = completion.choices[0]?.message?.content || "[]"
   let parsed: any[]
   try {
     const obj = JSON.parse(text)
-    // Handle both {"stops": [...]} and [...] formats
     parsed = Array.isArray(obj) ? obj : (obj.stops || obj.places || Object.values(obj)[0] || [])
   } catch {
     parsed = parseAIResponse(text)
   }
 
   const ranked = mergeResults(parsed, stops)
-  console.log(`✅ [GROQ] Scored ${ranked.length} stops`)
+  console.log(`✅ [GROQ] ${ranked.length} tourist stops after filtering`)
   return ranked.sort((a, b) => b.aiScore - a.aiScore)
 }
 
-// ── Main export: rank stops with AI ──────────────────────────────
-// Tries Gemini first → falls back to Groq → falls back to rating sort
+// ── Main export ───────────────────────────────────────────────────
 export async function rankStopsWithAI(
   stops:   RawStop[],
   context: RankingContext
 ): Promise<RankedStop[]> {
   if (stops.length === 0) return []
 
-  // Limit to 25 stops to keep prompt manageable and within token limits
-  const stopsToRank = stops.slice(0, 25)
+  // Pre-filter before sending to AI:
+  // Only send places with decent Google reviews to avoid wasting AI tokens
+  const quality = stops
+    .filter((s) => s.totalRatings >= 50 && s.rating >= 3.8)
+    .sort((a, b) => {
+      // Weighted score: rating × log(reviews)
+      const scoreA = a.rating * Math.log10(a.totalRatings + 1)
+      const scoreB = b.rating * Math.log10(b.totalRatings + 1)
+      return scoreB - scoreA
+    })
+    .slice(0, 25) // send top 25 to AI
 
-  // ── Try Gemini (primary, 1500 req/day free) ────────────────────
+  console.log(`🤖 Sending ${quality.length} quality places to AI for ranking...`)
+
+  // Try Gemini first
   if (process.env.GEMINI_API_KEY) {
     try {
-      console.log(`🤖 [AI] Trying Gemini for ${stopsToRank.length} stops...`)
-      return await rankWithGemini(stopsToRank, context)
+      return await rankWithGemini(quality, context)
     } catch (err) {
       console.warn("[GEMINI] Failed:", err instanceof Error ? err.message : err)
-      console.log("   Trying Groq fallback...")
     }
   }
 
-  // ── Try Groq (fallback, 30 req/min free) ──────────────────────
+  // Groq fallback
   if (process.env.GROQ_API_KEY) {
     try {
-      console.log(`🤖 [AI] Trying Groq for ${stopsToRank.length} stops...`)
-      return await rankWithGroq(stopsToRank, context)
+      return await rankWithGroq(quality, context)
     } catch (err) {
       console.warn("[GROQ] Failed:", err instanceof Error ? err.message : err)
     }
   }
 
-  // ── Last resort: sort by Google rating ────────────────────────
-  return ratingFallback(stopsToRank)
+  // Last resort
+  return ratingFallback(quality)
 }
