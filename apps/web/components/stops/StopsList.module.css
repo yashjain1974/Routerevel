@@ -1,0 +1,174 @@
+/* components/stops/StopsList.module.css */
+
+.container { width: 100%; }
+
+/* ── Radius selector ─────────────────────────────────────────────── */
+.radiusBar {
+  margin-bottom: 10px;
+  padding: 11px 13px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.radiusLabel {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.radiusBold { color: #f39c12; font-weight: 600; }
+
+.radiusBtns { display: flex; gap: 6px; }
+
+.radiusBtn {
+  flex: 1;
+  height: 32px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.radiusBtn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
+.radiusBtnActive {
+  background: rgba(243,156,18,0.15);
+  border-color: rgba(243,156,18,0.45);
+  color: #f39c12;
+}
+
+/* ── Status bar — shows streaming progress ───────────────────────── */
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  background: rgba(243, 156, 18, 0.07);
+  border: 1px solid rgba(243, 156, 18, 0.18);
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.statusCount {
+  margin-left: auto;
+  color: #f39c12;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+/* ── Sort bar ────────────────────────────────────────────────────── */
+.sortBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 7px 11px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.count { display: flex; align-items: center; gap: 5px; }
+.countNum { color: #f39c12; font-size: 1rem; font-weight: 800; }
+.countLabel { color: rgba(255,255,255,0.35); font-size: 0.75rem; }
+
+.sortGroup { display: flex; align-items: center; gap: 4px; }
+
+.sortBtn {
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.35);
+  font-family: inherit;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.sortBtn:hover { color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.08); }
+.sortBtnActive { background: rgba(243,156,18,0.14); border-color: rgba(243,156,18,0.4); color: #f39c12; }
+
+/* ── Meta bar ────────────────────────────────────────────────────── */
+.metaBar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px; margin-bottom: 10px;
+  border-radius: 9px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.72rem; color: rgba(255,255,255,0.28);
+  flex-wrap: wrap;
+}
+
+/* ── Cards list ──────────────────────────────────────────────────── */
+.list { width: 100%; }
+
+/* ── Sticky trip bar ─────────────────────────────────────────────── */
+.tripBar {
+  position: sticky;
+  bottom: 16px;
+  margin: 10px 0 0;
+  padding: 13px 15px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1B4F72, #164260);
+  border: 1px solid rgba(243, 156, 18, 0.3);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 30;
+}
+
+.tripBarLeft { flex: 1; }
+.tripBarTitle { color: #fff; font-size: 0.875rem; font-weight: 700; margin: 0 0 2px; }
+.tripBarMeta { color: rgba(255,255,255,0.45); font-size: 0.73rem; margin: 0; }
+.tripBarMeta span { color: #f39c12; font-weight: 600; }
+
+.tripBarBtn {
+  padding: 9px 16px; border-radius: 11px; border: none;
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  color: #fff; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(243,156,18,0.4);
+  text-decoration: none; display: flex; align-items: center; gap: 5px;
+  transition: opacity 0.15s;
+}
+.tripBarBtn:hover { opacity: 0.9; }
+
+/* ── Error state ─────────────────────────────────────────────────── */
+.errorBox {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 3rem 1.5rem; text-align: center;
+  border-radius: 16px;
+  background: rgba(248,113,113,0.05);
+  border: 1px solid rgba(248,113,113,0.15);
+}
+.errorTitle { color: #f87171; font-size: 1rem; font-weight: 600; margin: 0 0 6px; }
+.errorDesc  { color: rgba(255,255,255,0.38); font-size: 0.82rem; margin: 0 0 1rem; max-width: 280px; line-height: 1.55; }
+.retryBtn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: 10px;
+  background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.28);
+  color: #f87171; font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background 0.2s;
+}
+.retryBtn:hover { background: rgba(248,113,113,0.18); }
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+.empty {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 3rem 2rem; text-align: center;
+}
+.emptyTitle { color: rgba(255,255,255,0.4); font-size: 0.9rem; font-weight: 600; margin: 0 0 5px; }
+.emptyDesc  { color: rgba(255,255,255,0.24); font-size: 0.78rem; margin: 0; max-width: 220px; line-height: 1.55; }

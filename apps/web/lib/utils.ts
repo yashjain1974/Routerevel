@@ -34,15 +34,16 @@ export function formatRating(rating: number, total: number): string {
 
 // Maps AI score (0-100) to a human-readable label + color token
 export function scoreLabel(score: number): { label: string; color: "green" | "amber" | "blue" | "gray" } {
-  if (score >= 85) return { label: "Must visit",     color: "green" }
-  if (score >= 70) return { label: "Worth a stop",   color: "amber" }
-  if (score >= 55) return { label: "If you have time", color: "blue" }
-  return             { label: "Optional",            color: "gray"  }
+  if (!score && score !== 0) return { label: "Unranked", color: "gray" }
+  if (score >= 85) return { label: "Must visit",      color: "green" }
+  if (score >= 70) return { label: "Worth a stop",    color: "amber" }
+  if (score >= 55) return { label: "If you have time", color: "blue"  }
+  return             { label: "Optional",             color: "gray"  }
 }
 
 // Maps stop category to display name and color token for icons/badges
 export function categoryMeta(cat: StopCategory): { label: string; color: string } {
-  const map: Record<StopCategory, { label: string; color: string }> = {
+  const map: Record<string, { label: string; color: string }> = {
     temple:    { label: "Temple",    color: "#d97706" },
     nature:    { label: "Nature",    color: "#16a34a" },
     monument:  { label: "Monument",  color: "#2563eb" },
@@ -52,7 +53,8 @@ export function categoryMeta(cat: StopCategory): { label: string; color: string 
     dam:       { label: "Dam",       color: "#0891b2" },
     other:     { label: "Other",     color: "#64748b" },
   }
-  return map[cat]
+  // Fallback to "other" if category is unknown or undefined
+  return map[cat] ?? map["other"]
 }
 
 // Builds a Google Maps directions deep-link for the "Get Directions" button
