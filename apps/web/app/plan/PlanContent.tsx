@@ -1,47 +1,61 @@
 "use client"
 // app/plan/PlanContent.tsx
-// Passes real encoded polyline to RouteMap so it draws the actual road.
-// Map + stops stay in sync via shared Zustand store.
+// Builds rankMap from the sorted stops so map pins match list numbers.
+// rankMap = Map<placeId, displayRank> — passed to RouteMap.
 
-import { useState, useCallback } from "react"
-import { useSearchParams }       from "next/navigation"
+import { useState, useCallback, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, MapPin, Navigation, Map as MapIcon, List } from "lucide-react"
-import Link      from "next/link"
+import Link from "next/link"
 import { StopsList } from "@/components/stops/StopsList"
-import { RouteMap  } from "@/components/map/RouteMap"
-import { useRoute  } from "@/hooks/useRoute"
+import { RouteMap } from "@/components/map/RouteMap"
+import { useRoute } from "@/hooks/useRoute"
 import { useRouteStore } from "@/stores/useRouteStore"
 import styles from "./plan.module.css"
 
 export function PlanContent() {
   const params = useSearchParams()
-  const from   = params.get("from") || ""
-  const to     = params.get("to")   || ""
+  const from = params.get("from") || ""
+  const to = params.get("to") || ""
 
-  // Real route data from backend
   const { stops, route, isLoading } = useRoute(from, to)
 
-  // Radius from store — used to filter stops shown on map
+  // Get current sort + radius from store to compute same order as list
   const radiusKm = useRouteStore((s) => s.radiusKm)
+  const sortBy = useRouteStore((s) => s.sortBy)
 
-  // Filter stops for map by current radius
-  const mapStops = stops.filter((s) => s.detourKm <= radiusKm)
+  // Build the same sorted+filtered list that StopsList shows
+  // so map pin numbers always match list numbers
+  const sortedStops = useMemo(() => {
+    const filtered = stops.filter((s) => s.detourKm <= radiusKm)
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "score") return b.aiScore - a.aiScore
+      if (sortBy === "rating") return b.rating - a.rating
+      return a.detourKm - b.detourKm  // travel order
+    })
+  }, [stops, radiusKm, sortBy])
+
+  // rankMap: placeId → 1-based display number
+  // This is what both the map pins AND list cards use
+  const rankMap = useMemo(() => {
+    const map = new Map<string, number>()
+    sortedStops.forEach((stop, i) => map.set(stop.placeId, i + 1))
+    return map
+  }, [sortedStops])
 
   // Mobile map toggle
   const [mapVisible, setMapVisible] = useState(true)
   const toggleMap = useCallback(() => setMapVisible((v) => !v), [])
 
-  // Fallback coords while route loads
   const sourceLat = route?.sourceLat ?? 17.3850
   const sourceLng = route?.sourceLng ?? 78.4867
-  const destLat   = route?.destLat   ?? 12.9716
-  const destLng   = route?.destLng   ?? 77.5946
+  const destLat = route?.destLat ?? 12.9716
+  const destLng = route?.destLng ?? 77.5946
 
   return (
     <main className={styles.page}>
 
-      {/* ── Header ── */}
       <motion.header
         className={styles.header}
         initial={{ opacity: 0, y: -16 }}
@@ -56,14 +70,13 @@ export function PlanContent() {
             <h1 className={styles.pageTitle}>Route Stops</h1>
             <p className={styles.pageSubtitle}>
               {isLoading
-                ? "AI is scanning your route corridor..."
-                : "Select stops to add to your journey"
+                ? "AI scanning your route corridor..."
+                : "Tap a pin or card to add to your journey"
               }
             </p>
           </div>
         </div>
 
-        {/* Route pill */}
         <div className={styles.routePill}>
           <div className={styles.routeEndpoint}>
             <div className={styles.dotGreen} />
@@ -76,7 +89,6 @@ export function PlanContent() {
           </div>
         </div>
 
-        {/* Mobile toggle */}
         <div className={styles.mapToggleRow}>
           <button className={styles.mapToggleBtn} onClick={toggleMap}>
             {mapVisible
@@ -87,10 +99,8 @@ export function PlanContent() {
         </div>
       </motion.header>
 
-      {/* ── Body ── */}
       <div className={styles.body}>
 
-        {/* Map panel — shows real road polyline */}
         <AnimatePresence initial={false}>
           {mapVisible && (
             <motion.div
@@ -101,7 +111,8 @@ export function PlanContent() {
               transition={{ duration: 0.22 }}
             >
               <RouteMap
-                stops={mapStops}
+                stops={sortedStops}       // same order as list
+                rankMap={rankMap}          // pin numbers = list numbers
                 encodedPolyline={route?.polyline}
                 sourceLat={sourceLat}
                 sourceLng={sourceLng}
@@ -112,7 +123,6 @@ export function PlanContent() {
           )}
         </AnimatePresence>
 
-        {/* Stops panel */}
         <div className={styles.stopsPanel}>
           <StopsList from={from} to={to} />
         </div>

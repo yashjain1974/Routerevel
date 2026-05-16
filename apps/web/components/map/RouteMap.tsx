@@ -1,11 +1,8 @@
 "use client"
 // components/map/RouteMap.tsx
-// Key fixes:
-// 1. Draws REAL road polyline from Google Directions encoded polyline
-// 2. No more straight lines between stop pins
-// 3. fitBounds uses actual polyline coordinates
-// 4. Selected stops highlighted in amber, unselected in navy
-// 5. Popup has "Add to trip" / "Remove from trip" button
+// Fix: pin numbers now match the list order.
+// rankMap = { placeId: displayNumber } passed from StopsList
+// so pin #1 on map = card #1 in list always.
 
 import { useState, useCallback, useEffect, memo } from "react"
 import {
@@ -22,9 +19,8 @@ import { useRouteStore } from "@/stores/useRouteStore"
 import styles from "./RouteMap.module.css"
 
 // ── Polyline decoder ──────────────────────────────────────────────
-// Decodes Google's encoded polyline format into lat/lng array
-function decodePolyline(encoded: string): google.maps.LatLngLiteral[] {
-  const points: google.maps.LatLngLiteral[] = []
+function decodePolyline(encoded: string): { lat: number; lng: number }[] {
+  const points: { lat: number; lng: number }[] = []
   let index = 0, lat = 0, lng = 0
 
   while (index < encoded.length) {
@@ -49,13 +45,8 @@ function decodePolyline(encoded: string): google.maps.LatLngLiteral[] {
   return points
 }
 
-// ── Road polyline component ───────────────────────────────────────
-// Draws the actual road route — replaces the old straight-line approach
-interface RoadPolylineProps {
-  encodedPolyline: string
-}
-
-function RoadPolyline({ encodedPolyline }: RoadPolylineProps) {
+// ── Road polyline ─────────────────────────────────────────────────
+function RoadPolyline({ encodedPolyline }: { encodedPolyline: string }) {
   const map = useMap()
 
   useEffect(() => {
@@ -63,10 +54,8 @@ function RoadPolyline({ encodedPolyline }: RoadPolylineProps) {
     const g = (window as any).google?.maps
     if (!g) return
 
-    // Decode real road path from Google Directions API
     const path = decodePolyline(encodedPolyline)
 
-    // Draw the road as a solid amber line
     const polyline = new g.Polyline({
       path,
       strokeColor:   "#F39C12",
@@ -75,17 +64,11 @@ function RoadPolyline({ encodedPolyline }: RoadPolylineProps) {
       map,
     })
 
-    // Auto-fit map to show the full route with comfortable padding
+    // Fit to full route
     const bounds = new g.LatLngBounds()
-    path.forEach((p: google.maps.LatLngLiteral) => bounds.extend(p))
-
+    path.forEach((p: any) => bounds.extend(p))
     setTimeout(() => {
-      map.fitBounds(bounds, {
-        top:    80,
-        bottom: 100,
-        left:   60,
-        right:  60,
-      })
+      map.fitBounds(bounds, { top: 80, bottom: 100, left: 60, right: 60 })
     }, 150)
 
     return () => polyline.setMap(null)
@@ -94,37 +77,36 @@ function RoadPolyline({ encodedPolyline }: RoadPolylineProps) {
   return null
 }
 
-// ── Stop pin component ────────────────────────────────────────────
-// Amber = selected in itinerary, Navy = not selected
+// ── Stop pin — number matches list order ──────────────────────────
 function StopPin({
-  rank,
+  rank,       // display number (1-based, matches list)
   isPicked,
-  isFirst,
+  isTop,      // rank === 1
 }: {
   rank:    number
   isPicked: boolean
-  isFirst: boolean
+  isTop:   boolean
 }) {
   return (
     <div style={{
-      width:           "34px",
-      height:          "34px",
-      borderRadius:    "50% 50% 50% 0",
-      transform:       "rotate(-45deg)",
-      background:      isPicked
+      width:          "34px",
+      height:         "34px",
+      borderRadius:   "50% 50% 50% 0",
+      transform:      "rotate(-45deg)",
+      background:     isPicked
         ? "linear-gradient(135deg, #F39C12, #E67E22)"
-        : isFirst
+        : isTop
         ? "linear-gradient(135deg, #2DCE89, #1aad72)"
         : "linear-gradient(135deg, #1B4F72, #164260)",
-      border:          `2px solid ${isPicked ? "#F7CE58" : "rgba(255,255,255,0.4)"}`,
-      display:         "flex",
-      alignItems:      "center",
-      justifyContent:  "center",
-      cursor:          "pointer",
-      boxShadow:       isPicked
+      border:         `2px solid ${isPicked ? "#F7CE58" : "rgba(255,255,255,0.5)"}`,
+      display:        "flex",
+      alignItems:     "center",
+      justifyContent: "center",
+      cursor:         "pointer",
+      boxShadow:      isPicked
         ? "0 3px 14px rgba(243,156,18,0.55)"
         : "0 2px 8px rgba(0,0,0,0.4)",
-      transition:      "all 0.2s ease",
+      transition:     "all 0.2s ease",
     }}>
       <span style={{
         transform:  "rotate(45deg)",
@@ -139,7 +121,7 @@ function StopPin({
   )
 }
 
-// ── Source / destination endpoint pins ────────────────────────────
+// ── Endpoint pins ─────────────────────────────────────────────────
 function EndpointPin({ type }: { type: "source" | "dest" }) {
   const isSource = type === "source"
   return (
@@ -148,7 +130,7 @@ function EndpointPin({ type }: { type: "source" | "dest" }) {
       height:       "16px",
       borderRadius: "50%",
       background:   isSource ? "#2DCE89" : "#EF4444",
-      border:       `3px solid ${isSource ? "#fff" : "#fff"}`,
+      border:       "3px solid #fff",
       boxShadow:    `0 0 0 3px ${isSource
         ? "rgba(45,206,137,0.3)"
         : "rgba(239,68,68,0.3)"}`,
@@ -156,9 +138,12 @@ function EndpointPin({ type }: { type: "source" | "dest" }) {
   )
 }
 
-// ── Main RouteMap ─────────────────────────────────────────────────
+// ── Main map ──────────────────────────────────────────────────────
 interface RouteMapProps {
   stops:            Stop[]
+  // rankMap maps placeId → display rank (1-based)
+  // This ensures pin number always matches list number
+  rankMap:          Map<string, number>
   encodedPolyline?: string
   sourceLat:        number
   sourceLng:        number
@@ -168,6 +153,7 @@ interface RouteMapProps {
 
 function RouteMapComponent({
   stops,
+  rankMap,
   encodedPolyline,
   sourceLat,
   sourceLng,
@@ -177,8 +163,7 @@ function RouteMapComponent({
   const [activeStop, setActiveStop] = useState<Stop | null>(null)
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ""
 
-  // Pull picked stops from global store
-  const pickedStopIds   = useRouteStore((s) => s.pickedStopIds)
+  const pickedStopIds    = useRouteStore((s) => s.pickedStopIds)
   const togglePickedStop = useRouteStore((s) => s.togglePickedStop)
 
   const handlePin   = useCallback((stop: Stop) => setActiveStop(stop), [])
@@ -189,7 +174,6 @@ function RouteMapComponent({
     togglePickedStop(activeStop.placeId)
   }, [activeStop, togglePickedStop])
 
-  // Default centre between source and dest while loading
   const centre = {
     lat: (sourceLat + destLat) / 2,
     lng: (sourceLng + destLng) / 2,
@@ -200,7 +184,7 @@ function RouteMapComponent({
   const scoreBg: Record<string, string> = {
     green: "#dcfce7", amber: "#fef9c3", blue: "#dbeafe", gray: "#f1f5f9",
   }
-  const scoreText: Record<string, string> = {
+  const scoreColor: Record<string, string> = {
     green: "#166534", amber: "#854d0e", blue: "#1e40af", gray: "#64748b",
   }
 
@@ -221,54 +205,43 @@ function RouteMapComponent({
           fullscreenControl={false}
           scaleControl={false}
         >
-          {/* ── Real road polyline ── */}
-          {encodedPolyline && (
-            <RoadPolyline encodedPolyline={encodedPolyline} />
-          )}
+          {/* Real road polyline */}
+          {encodedPolyline && <RoadPolyline encodedPolyline={encodedPolyline} />}
 
-          {/* ── Source pin ── */}
-          <AdvancedMarker
-            position={{ lat: sourceLat, lng: sourceLng }}
-            title="Start"
-            zIndex={100}
-          >
+          {/* Source + destination pins */}
+          <AdvancedMarker position={{ lat: sourceLat, lng: sourceLng }} zIndex={100}>
             <EndpointPin type="source" />
           </AdvancedMarker>
-
-          {/* ── Destination pin ── */}
-          <AdvancedMarker
-            position={{ lat: destLat, lng: destLng }}
-            title="Destination"
-            zIndex={100}
-          >
+          <AdvancedMarker position={{ lat: destLat, lng: destLng }} zIndex={100}>
             <EndpointPin type="dest" />
           </AdvancedMarker>
 
-          {/* ── Stop pins — animate in with stagger ── */}
-          {stops.map((stop, i) => {
+          {/* Stop pins — rank from rankMap matches list order */}
+          {stops.map((stop) => {
+            const rank     = rankMap.get(stop.placeId) ?? 0
             const isPicked = pickedStopIds.has(stop.placeId)
             return (
               <AdvancedMarker
                 key={stop.placeId}
                 position={{ lat: stop.lat, lng: stop.lng }}
                 onClick={() => handlePin(stop)}
-                title={stop.name}
-                zIndex={isPicked ? 50 : 10}
+                title={`${rank}. ${stop.name}`}
+                zIndex={isPicked ? 50 : rank === 1 ? 40 : 10}
               >
                 <motion.div
                   initial={{ scale: 0, y: -8, opacity: 0 }}
                   animate={{ scale: 1, y: 0, opacity: 1 }}
                   transition={{
-                    delay:     0.1 + i * 0.05,
+                    delay:     rank * 0.04,
                     type:      "spring",
                     stiffness: 240,
                     damping:   18,
                   }}
                 >
                   <StopPin
-                    rank={i + 1}
+                    rank={rank}
                     isPicked={isPicked}
-                    isFirst={i === 0}
+                    isTop={rank === 1}
                   />
                 </motion.div>
               </AdvancedMarker>
@@ -276,7 +249,7 @@ function RouteMapComponent({
           })}
         </Map>
 
-        {/* ── Stop popup ── */}
+        {/* Stop popup */}
         <AnimatePresence>
           {activeStop && score && (
             <motion.div
@@ -285,19 +258,34 @@ function RouteMapComponent({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.18 }}
             >
               <button className={styles.popupClose} onClick={handleClose}>
                 <X size={13} />
               </button>
 
-              <p className={styles.popupName}>{activeStop.name}</p>
+              {/* Rank badge matching list number */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                <div style={{
+                  width: "26px", height: "26px", borderRadius: "8px",
+                  background: pickedStopIds.has(activeStop.placeId)
+                    ? "linear-gradient(135deg,#F39C12,#E67E22)"
+                    : "rgba(255,255,255,0.1)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "#fff", fontSize: "0.75rem", fontWeight: 800, flexShrink: 0,
+                }}>
+                  {rankMap.get(activeStop.placeId) ?? "?"}
+                </div>
+                <p className={styles.popupName} style={{ margin: 0 }}>
+                  {activeStop.name}
+                </p>
+              </div>
 
               <span
                 className={styles.popupBadge}
                 style={{
                   background: scoreBg[score.color],
-                  color:      scoreText[score.color],
+                  color:      scoreColor[score.color],
                 }}
               >
                 {score.label}
@@ -318,18 +306,16 @@ function RouteMapComponent({
                 </span>
               </div>
 
-              {/* Add / Remove from trip */}
               <button
                 className={`${styles.popupAddBtn} ${pickedStopIds.has(activeStop.placeId) ? "remove" : "add"}`}
                 onClick={handleTogglePick}
               >
                 {pickedStopIds.has(activeStop.placeId)
                   ? <><Minus size={15} /> Remove from trip</>
-                  : <><Plus size={15} /> Add to trip</>
+                  : <><Plus  size={15} /> Add to trip</>
                 }
               </button>
 
-              {/* Directions link */}
               <a
                 href={directionsUrl(activeStop.lat, activeStop.lng, activeStop.name)}
                 target="_blank"
