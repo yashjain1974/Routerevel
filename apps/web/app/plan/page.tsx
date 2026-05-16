@@ -13,7 +13,7 @@ export const metadata = {
 
 export default function PlanPage() {
   return (
-    <Suspense fallback={<LoadingSpinner message="Planning your route..." />}>
+    <Suspense fallback={<LoadingSpinner message="AI is Planning your route..." />}>
       <PlanContent />
     </Suspense>
   )
