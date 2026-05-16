@@ -1,7 +1,7 @@
 "use client"
 // app/plan/PlanContent.tsx
-// Builds rankMap from the sorted stops so map pins match list numbers.
-// rankMap = Map<placeId, displayRank> — passed to RouteMap.
+// Uses useRouteStream so map draws route polyline immediately,
+// then pins appear one by one as AI scores each stop.
 
 import { useState, useCallback, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
@@ -10,7 +10,7 @@ import { ArrowLeft, MapPin, Navigation, Map as MapIcon, List } from "lucide-reac
 import Link from "next/link"
 import { StopsList } from "@/components/stops/StopsList"
 import { RouteMap } from "@/components/map/RouteMap"
-import { useRoute } from "@/hooks/useRoute"
+import { useRouteStream } from "@/hooks/useRouteStream"
 import { useRouteStore } from "@/stores/useRouteStore"
 import styles from "./plan.module.css"
 
@@ -19,32 +19,28 @@ export function PlanContent() {
   const from = params.get("from") || ""
   const to = params.get("to") || ""
 
-  const { stops, route, isLoading } = useRoute(from, to)
+  // Stream hook — map gets route + stops as they arrive
+  const { stops, route } = useRouteStream(from, to)
 
-  // Get current sort + radius from store to compute same order as list
   const radiusKm = useRouteStore((s) => s.radiusKm)
   const sortBy = useRouteStore((s) => s.sortBy)
 
-  // Build the same sorted+filtered list that StopsList shows
-  // so map pin numbers always match list numbers
+  // Build rank map matching the list order in StopsList
   const sortedStops = useMemo(() => {
     const filtered = stops.filter((s) => s.detourKm <= radiusKm)
     return [...filtered].sort((a, b) => {
       if (sortBy === "score") return b.aiScore - a.aiScore
       if (sortBy === "rating") return b.rating - a.rating
-      return a.detourKm - b.detourKm  // travel order
+      return a.detourKm - b.detourKm
     })
   }, [stops, radiusKm, sortBy])
 
-  // rankMap: placeId → 1-based display number
-  // This is what both the map pins AND list cards use
   const rankMap = useMemo(() => {
     const map = new Map<string, number>()
     sortedStops.forEach((stop, i) => map.set(stop.placeId, i + 1))
     return map
   }, [sortedStops])
 
-  // Mobile map toggle
   const [mapVisible, setMapVisible] = useState(true)
   const toggleMap = useCallback(() => setMapVisible((v) => !v), [])
 
@@ -69,10 +65,7 @@ export function PlanContent() {
           <div className={styles.titleGroup}>
             <h1 className={styles.pageTitle}>Route Stops</h1>
             <p className={styles.pageSubtitle}>
-              {isLoading
-                ? "AI scanning your route corridor..."
-                : "Tap a pin or card to add to your journey"
-              }
+              Tap a pin or card to add to your journey
             </p>
           </div>
         </div>
@@ -111,8 +104,8 @@ export function PlanContent() {
               transition={{ duration: 0.22 }}
             >
               <RouteMap
-                stops={sortedStops}       // same order as list
-                rankMap={rankMap}          // pin numbers = list numbers
+                stops={sortedStops}
+                rankMap={rankMap}
                 encodedPolyline={route?.polyline}
                 sourceLat={sourceLat}
                 sourceLng={sourceLng}

@@ -1,24 +1,24 @@
 // server/src/index.ts
 import "dotenv/config"
-import express        from "express"
-import cors           from "cors"
-import helmet         from "helmet"
-import compression    from "compression"
-import morgan         from "morgan"
-import rateLimit      from "express-rate-limit"
+import express from "express"
+import cors from "cors"
+import helmet from "helmet"
+import compression from "compression"
+import morgan from "morgan"
+import rateLimit from "express-rate-limit"
 
 // Wrap everything in try/catch so errors are visible
 async function startServer() {
   try {
     const { corridorRouter } = await import("./routes/corridor")
-    const { healthRouter   } = await import("./routes/health")
+    const { healthRouter } = await import("./routes/health")
 
-    const app  = express()
+    const app = express()
     const PORT = process.env.PORT || 3001
 
     app.use(helmet())
     app.use(cors({
-      origin:      process.env.CLIENT_URL || "http://localhost:3000",
+      origin: process.env.CLIENT_URL || "http://localhost:3000",
       credentials: true,
     }))
     app.use(compression())
@@ -27,10 +27,10 @@ async function startServer() {
 
     const limiter = rateLimit({
       windowMs: 60 * 1000,
-      max:      30,
-      message:  { error: "Too many requests. Please wait." },
+      max: 30,
+      message: { error: "Too many requests. Please wait." },
       standardHeaders: true,
-      legacyHeaders:   false,
+      legacyHeaders: false,
     })
     app.use("/api/plan-route", limiter)
 
@@ -39,11 +39,11 @@ async function startServer() {
 
     app.get("/", (_req, res) => {
       res.json({
-        name:    "RouteRevel API",
+        name: "RouteRevel API",
         version: "1.0.0",
-        status:  "running",
+        status: "running",
         endpoints: {
-          health:    "GET  /api/health",
+          health: "GET  /api/health",
           planRoute: "POST /api/plan-route",
         },
       })
@@ -54,14 +54,14 @@ async function startServer() {
     })
 
     app.use((
-      err:   Error,
-      _req:  express.Request,
-      res:   express.Response,
+      err: Error,
+      _req: express.Request,
+      res: express.Response,
       _next: express.NextFunction
     ) => {
       console.error("[ERROR]", err.message)
       res.status(500).json({
-        error:   "Internal server error",
+        error: "Internal server error",
         message: process.env.NODE_ENV === "development" ? err.message : undefined,
       })
     })
