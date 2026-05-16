@@ -1,0 +1,16 @@
+{
+    "name": "RouteRevel",
+    "short_name": "RouteRevel",
+    "description": "Discover amazing places between your journey",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0D2137",
+    "theme_color": "#1B4F72",
+    "icons": [
+        {
+            "src": "/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        }
+    ]
+}
