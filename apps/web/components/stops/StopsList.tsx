@@ -21,7 +21,7 @@ type RadiusKm = typeof RADIUS_OPTIONS[number]
 
 const SORT_OPTIONS = [
   { key: "score", label: "AI Score" },
-  { key: "detour", label: "Nearest" },
+  { key: "travel", label: "Nearest" },
   { key: "rating", label: "Rating" },
 ] as const
 type SortKey = typeof SORT_OPTIONS[number]["key"]

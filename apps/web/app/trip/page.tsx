@@ -75,6 +75,7 @@ function TripContent() {
       <div className={styles.mapFull}>
         <RouteMap
           stops={remaining}
+          rankMap={new Map(remaining.map((s, i) => [s.placeId, i + 1]))}
           sourceLat={17.3850}
           sourceLng={78.4867}
           destLat={12.9716}
