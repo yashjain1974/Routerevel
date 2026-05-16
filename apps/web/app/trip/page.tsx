@@ -24,26 +24,26 @@ import styles from "./trip.module.css"
 // Mock stops — same as plan page
 // Replace with Zustand store data once plan → trip navigation passes route data
 const TRIP_STOPS: Stop[] = [
-  { id: "1", name: "Lepakshi Temple",    lat: 13.8030, lng: 77.6090, aiScore: 92, detourKm: 1.2,  detourMinutes: 4,  visitDurationMinutes: 60,  rating: 4.6, totalRatings: 8420,  category: "temple"   as StopCategory, openNow: true,  openingHours: ["Monday: 6:00 AM – 6:00 PM"], photos: [], description: "", aiSummary: "One of the finest examples of Vijayanagara architecture. Must visit.", placeId: "" },
-  { id: "2", name: "Kolar Gold Fields",  lat: 13.0689, lng: 78.2647, aiScore: 74, detourKm: 4.5,  detourMinutes: 12, visitDurationMinutes: 30,  rating: 4.2, totalRatings: 1840,  category: "viewpoint" as StopCategory, openNow: true,  openingHours: ["Open 24 hours"],              photos: [], description: "", aiSummary: "Fascinating industrial heritage site.", placeId: "" },
-  { id: "3", name: "Skandagiri Hills",   lat: 13.5850, lng: 77.6730, aiScore: 81, detourKm: 8.2,  detourMinutes: 18, visitDurationMinutes: 120, rating: 4.4, totalRatings: 12300, category: "nature"   as StopCategory, openNow: true,  openingHours: ["Monday: 5:00 AM – 5:00 PM"], photos: [], description: "", aiSummary: "Stunning sunrise trek popular with Bengaluru locals.", placeId: "" },
-  { id: "4", name: "Madhugiri Betta",    lat: 13.6624, lng: 77.2046, aiScore: 88, detourKm: 18.3, detourMinutes: 28, visitDurationMinutes: 90,  rating: 4.5, totalRatings: 5670,  category: "nature"   as StopCategory, openNow: true,  openingHours: ["Monday: 6:00 AM – 6:00 PM"], photos: [], description: "", aiSummary: "Asia's second largest monolith.", placeId: "" },
+  { id: "1", name: "Lepakshi Temple", lat: 13.8030, lng: 77.6090, aiScore: 92, detourKm: 1.2, detourMinutes: 4, visitDurationMinutes: 60, rating: 4.6, totalRatings: 8420, category: "temple" as StopCategory, openNow: true, openingHours: ["Monday: 6:00 AM – 6:00 PM"], photos: [], description: "", aiSummary: "One of the finest examples of Vijayanagara architecture. Must visit.", placeId: "" },
+  { id: "2", name: "Kolar Gold Fields", lat: 13.0689, lng: 78.2647, aiScore: 74, detourKm: 4.5, detourMinutes: 12, visitDurationMinutes: 30, rating: 4.2, totalRatings: 1840, category: "viewpoint" as StopCategory, openNow: true, openingHours: ["Open 24 hours"], photos: [], description: "", aiSummary: "Fascinating industrial heritage site.", placeId: "" },
+  { id: "3", name: "Skandagiri Hills", lat: 13.5850, lng: 77.6730, aiScore: 81, detourKm: 8.2, detourMinutes: 18, visitDurationMinutes: 120, rating: 4.4, totalRatings: 12300, category: "nature" as StopCategory, openNow: true, openingHours: ["Monday: 5:00 AM – 5:00 PM"], photos: [], description: "", aiSummary: "Stunning sunrise trek popular with Bengaluru locals.", placeId: "" },
+  { id: "4", name: "Madhugiri Betta", lat: 13.6624, lng: 77.2046, aiScore: 88, detourKm: 18.3, detourMinutes: 28, visitDurationMinutes: 90, rating: 4.5, totalRatings: 5670, category: "nature" as StopCategory, openNow: true, openingHours: ["Monday: 6:00 AM – 6:00 PM"], photos: [], description: "", aiSummary: "Asia's second largest monolith.", placeId: "" },
 ]
 
 function TripContent() {
-  const params  = useSearchParams()
-  const router  = useRouter()
-  const from    = params.get("from") || "Hyderabad"
-  const to      = params.get("to")   || "Bangalore"
+  const params = useSearchParams()
+  const router = useRouter()
+  const from = params.get("from") || "Hyderabad"
+  const to = params.get("to") || "Bangalore"
 
   // Track which stops have been "passed" — in real app this uses geofencing
-  const [passedIds, setPassedIds]   = useState<string[]>([])
-  const [sheetOpen, setSheetOpen]   = useState(true)
-  const [elapsed,   setElapsed]     = useState(0)  // seconds since trip started
+  const [passedIds, setPassedIds] = useState<string[]>([])
+  const [sheetOpen, setSheetOpen] = useState(true)
+  const [elapsed, setElapsed] = useState(0)  // seconds since trip started
 
   // Remaining stops (not yet passed)
-  const remaining = TRIP_STOPS.filter((s) => !passedIds.includes(s.id))
-  const nextStop  = remaining[0] || null
+  const remaining = TRIP_STOPS.filter((s) => !passedIds.includes(s.id ?? ""))
+  const nextStop = remaining[0] || null
 
   // Mock elapsed timer — shows how long trip has been active
   useEffect(() => {
@@ -59,7 +59,7 @@ function TripContent() {
 
   // Mark next stop as passed (simulate arriving)
   const handleSkipStop = useCallback(() => {
-    if (nextStop) setPassedIds((ids) => [...ids, nextStop.id])
+    if (nextStop) setPassedIds((ids) => [...ids, nextStop.placeId])
   }, [nextStop])
 
   const handleEndTrip = useCallback(() => {
