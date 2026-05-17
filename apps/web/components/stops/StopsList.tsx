@@ -1,68 +1,67 @@
 "use client"
 // components/stops/StopsList.tsx
-// Now uses useRouteStream for progressive loading.
-// Stops appear one by one as AI scores them — no more waiting.
+// Updated: "Build Itinerary" button saves picked stops to sessionStorage
+// and navigates to /itinerary page.
 
 import { useMemo, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import {
-  MapPin, SlidersHorizontal, SearchX, RefreshCw,
-  Wifi, Navigation, ExternalLink, Loader2
-} from "lucide-react"
-import { StopCard } from "./StopCard"
-import { StopDetail } from "./StopDetail"
-import { useRouteStore } from "@/stores/useRouteStore"
-import { useRouteStream } from "@/hooks/useRouteStream"
-import { Stop } from "@/types"
-import styles from "./StopsList.module.css"
+import { MapPin, SlidersHorizontal, SearchX, RefreshCw,
+         Wifi, Navigation, Map, Loader2 } from "lucide-react"
+import { StopCard }        from "./StopCard"
+import { StopDetail }      from "./StopDetail"
+import { useRouteStore }   from "@/stores/useRouteStore"
+import { useRouteStream }  from "@/hooks/useRouteStream"
+import { Stop }            from "@/types"
+import styles              from "./StopsList.module.css"
 
 const RADIUS_OPTIONS = [5, 10, 20, 30] as const
 type RadiusKm = typeof RADIUS_OPTIONS[number]
 
 const SORT_OPTIONS = [
-  { key: "score", label: "AI Score" },
-  { key: "travel", label: "Nearest" },
-  { key: "rating", label: "Rating" },
+  { key: "score",  label: "AI Score" },
+  { key: "travel", label: "Nearest"  },
+  { key: "rating", label: "Rating"   },
 ] as const
 type SortKey = typeof SORT_OPTIONS[number]["key"]
 
 interface StopsListProps {
   from: string
-  to: string
+  to:   string
 }
 
 export function StopsList({ from, to }: StopsListProps) {
+  const router = useRouter()
 
   // ── Store ──────────────────────────────────────────────────────
-  const selectedStop = useRouteStore((s) => s.selectedStop)
-  const setSelected = useRouteStore((s) => s.setSelectedStop)
-  const sortBy = useRouteStore((s) => s.sortBy)
-  const setSortBy = useRouteStore((s) => s.setSortBy)
-  const radiusKm = useRouteStore((s) => s.radiusKm)
-  const setRadiusKm = useRouteStore((s) => s.setRadiusKm)
-  const pickedStopIds = useRouteStore((s) => s.pickedStopIds)
+  const selectedStop     = useRouteStore((s) => s.selectedStop)
+  const setSelected      = useRouteStore((s) => s.setSelectedStop)
+  const sortBy           = useRouteStore((s) => s.sortBy)
+  const setSortBy        = useRouteStore((s) => s.setSortBy)
+  const radiusKm         = useRouteStore((s) => s.radiusKm)
+  const setRadiusKm      = useRouteStore((s) => s.setRadiusKm)
+  const pickedStopIds    = useRouteStore((s) => s.pickedStopIds)
   const clearPickedStops = useRouteStore((s) => s.clearPickedStops)
 
-  // ── Progressive stream ─────────────────────────────────────────
-  const { stops, isLoading, isDone, error, status, fromCache, refetch, route } =
+  // ── Stream ─────────────────────────────────────────────────────
+  const { stops, isLoading, isDone, error, status, fromCache, refetch } =
     useRouteStream(from, to)
 
-  // ── Filter by radius ───────────────────────────────────────────
+  // ── Filter + sort ──────────────────────────────────────────────
   const filtered = useMemo<Stop[]>(
     () => stops.filter((s) => s.detourKm <= radiusKm),
     [stops, radiusKm]
   )
 
-  // ── Sort ───────────────────────────────────────────────────────
   const sorted = useMemo<Stop[]>(() => {
     return [...filtered].sort((a, b) => {
-      if (sortBy === "score") return b.aiScore - a.aiScore
-      if (sortBy === "rating") return b.rating - a.rating
+      if (sortBy === "score")  return b.aiScore  - a.aiScore
+      if (sortBy === "rating") return b.rating   - a.rating
       return a.detourKm - b.detourKm
     })
   }, [filtered, sortBy])
 
-  // ── Selection ──────────────────────────────────────────────────
+  // ── Picked stops ───────────────────────────────────────────────
   const pickedStops = useMemo(
     () => sorted.filter((s) => pickedStopIds.has(s.placeId)),
     [sorted, pickedStopIds]
@@ -73,18 +72,21 @@ export function StopsList({ from, to }: StopsListProps) {
     [pickedStops]
   )
 
-  const googleMapsUrl = useMemo(() => {
-    if (!pickedStops.length) return ""
-    const origin = encodeURIComponent(from)
-    const destination = encodeURIComponent(to)
-    const waypoints = pickedStops.map((s) => `${s.lat},${s.lng}`).join("|")
-    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=driving`
-  }, [pickedStops, from, to])
+  // ── Build itinerary ────────────────────────────────────────────
+  // Saves picked stops to sessionStorage then navigates to /itinerary
+  const handleBuildItinerary = useCallback(() => {
+    if (pickedStops.length === 0) return
+    try {
+      sessionStorage.setItem("routerevel_picked_stops", JSON.stringify(pickedStops))
+    } catch { /* ignore */ }
+    router.push(`/itinerary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
+  }, [pickedStops, from, to, router])
 
+  // ── Callbacks ──────────────────────────────────────────────────
   const handleCardClick = useCallback((stop: Stop) => setSelected(stop), [setSelected])
-  const handleClose = useCallback(() => setSelected(null), [setSelected])
+  const handleClose     = useCallback(() => setSelected(null), [setSelected])
 
-  // ── Error state ────────────────────────────────────────────────
+  // ── States ─────────────────────────────────────────────────────
   if (error && stops.length === 0) return (
     <div className={styles.errorBox}>
       <Wifi size={36} style={{ color: "rgba(248,113,113,0.5)", marginBottom: "12px" }} />
@@ -125,30 +127,22 @@ export function StopsList({ from, to }: StopsListProps) {
         </div>
       </motion.div>
 
-      {/* ── Status bar — shows loading progress ── */}
+      {/* ── Status bar ── */}
       {(isLoading || status) && (
         <motion.div
           className={styles.statusBar}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
         >
-          {isLoading && (
-            <Loader2
-              size={13}
-              style={{ flexShrink: 0, animation: "spin 1s linear infinite" }}
-            />
-          )}
+          {isLoading && <Loader2 size={13} style={{ flexShrink: 0, animation: "spin 1s linear infinite" }} />}
           <span>{status}</span>
           {stops.length > 0 && isLoading && (
-            <span className={styles.statusCount}>
-              {stops.length} found so far
-            </span>
+            <span className={styles.statusCount}>{stops.length} found</span>
           )}
         </motion.div>
       )}
 
-      {/* ── Sort + count bar — shown as stops arrive ── */}
+      {/* ── Sort bar ── */}
       {stops.length > 0 && (
         <motion.div
           className={styles.sortBar}
@@ -160,7 +154,7 @@ export function StopsList({ from, to }: StopsListProps) {
             <span className={styles.countNum}>{sorted.length}</span>
             <span className={styles.countLabel}>
               stops
-              {!isDone && <span style={{ color: "rgba(255,255,255,0.3)", marginLeft: "4px" }}>• loading more...</span>}
+              {!isDone && <span style={{ color: "rgba(255,255,255,0.3)", marginLeft: "4px", fontSize: "0.68rem" }}>• loading...</span>}
               {fromCache && <span style={{ color: "rgba(45,206,137,0.6)", marginLeft: "5px", fontSize: "0.68rem" }}>⚡ cached</span>}
             </span>
           </div>
@@ -179,21 +173,6 @@ export function StopsList({ from, to }: StopsListProps) {
         </motion.div>
       )}
 
-      {/* ── Route meta ── */}
-      {route && (
-        <motion.div
-          className={styles.metaBar}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <span>{from} → {to}</span>
-          <span>·</span>
-          <span>{route.distanceKm} km</span>
-          <span>·</span>
-          <span>~{Math.floor(route.durationMinutes / 60)}h {route.durationMinutes % 60}m</span>
-        </motion.div>
-      )}
-
       {/* ── Empty after filter ── */}
       {sorted.length === 0 && isDone && (
         <div className={styles.empty}>
@@ -203,7 +182,7 @@ export function StopsList({ from, to }: StopsListProps) {
         </div>
       )}
 
-      {/* ── Stop cards — appear one by one as stream delivers them ── */}
+      {/* ── Stop cards ── */}
       <motion.div layout className={styles.list}>
         <AnimatePresence>
           {sorted.map((stop, i) => (
@@ -217,14 +196,14 @@ export function StopsList({ from, to }: StopsListProps) {
         </AnimatePresence>
       </motion.div>
 
-      {/* ── Sticky trip bar ── */}
+      {/* ── Sticky trip bar with "Build Itinerary" ── */}
       <AnimatePresence>
         {pickedStops.length > 0 && (
           <motion.div
             className={styles.tripBar}
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
+            exit={{ opacity: 0, y: 20 }}
             transition={{ type: "spring", stiffness: 200, damping: 22 }}
           >
             <div className={styles.tripBarLeft}>
@@ -233,27 +212,35 @@ export function StopsList({ from, to }: StopsListProps) {
               </p>
               <p className={styles.tripBarMeta}>
                 +<span>{Math.floor(totalAddedMin / 60)}h {totalAddedMin % 60}m</span>
-                &nbsp;added to your trip
+                &nbsp;added to trip
               </p>
             </div>
+
+            {/* Clear */}
             <button
               onClick={clearPickedStops}
               style={{
-                background: "none", border: "1px solid rgba(255,255,255,0.15)",
-                color: "rgba(255,255,255,0.45)", borderRadius: "9px",
-                padding: "8px 12px", cursor: "pointer", fontSize: "0.78rem", fontFamily: "inherit",
+                background: "none",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.4)",
+                borderRadius: "9px",
+                padding: "6px 10px",
+                cursor: "pointer",
+                fontSize: "0.75rem",
+                fontFamily: "inherit",
               }}
             >
               Clear
             </button>
-            <a
-              href={googleMapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+
+            {/* Build Itinerary — main CTA */}
+            <button
+              onClick={handleBuildItinerary}
               className={styles.tripBarBtn}
             >
-              Navigate <ExternalLink size={13} />
-            </a>
+              <Map size={15} />
+              Build Itinerary
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -265,7 +252,7 @@ export function StopsList({ from, to }: StopsListProps) {
         )}
       </AnimatePresence>
 
-      <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
